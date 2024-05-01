@@ -1,3 +1,17 @@
+import { Timer, Scroll } from 'phosphor-react'
+import { HeaderContainer } from './style'
+import { NavLink } from 'react-router-dom'
 export function Header() {
-  return <h1>Header</h1>
+  return (
+    <HeaderContainer>
+      <nav>
+        <NavLink to="/">
+          <Timer size={26} />
+        </NavLink>
+        <NavLink to="/history">
+          <Scroll size={26} />
+        </NavLink>
+      </nav>
+    </HeaderContainer>
+  )
 }
