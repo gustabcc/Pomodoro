@@ -1,4 +1,4 @@
-import { Play } from 'phosphor-react'
+import { HandPalm, Play } from 'phosphor-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as zod from 'zod'
@@ -10,6 +10,7 @@ import {
   MinutesAmountInput,
   Separator,
   StartButton,
+  StopButton,
   TaskInput,
 } from './style'
 import { useEffect, useState } from 'react'
@@ -28,6 +29,8 @@ interface Cycle {
   task: string
   minutesAmount: number
   startDate: Date
+  interruptedDate?: Date
+  finishDate?: Date
 }
 
 export function Home() {
@@ -70,17 +73,35 @@ export function Home() {
   // Atualiza o ciclo ativo a cada segundo atuando como um cronomêtro
   useEffect(() => {
     let interval: number
+
     if (activeCycle) {
       interval = setInterval(() => {
-        setAmountSecondsPassed(
-          differenceInSeconds(new Date(), activeCycle.startDate),
+        const secondsDifference = differenceInSeconds(
+          new Date(),
+          activeCycle.startDate,
         )
+
+        if (secondsDifference >= totalSeconds) {
+          setActiveCycleId(null)
+          setCycles(state =>
+            state.map(cycle => {
+              if (cycle.id === activeCycleId) {
+                return { ...cycle, finishDate: new Date() }
+              } else {
+                return cycle
+              }
+            }),
+          )
+        } else {
+          setAmountSecondsPassed(secondsDifference)
+        }
       }, 1000)
     }
+
     return () => {
       clearInterval(interval)
     }
-  }, [activeCycle])
+  }, [activeCycle, totalSeconds, activeCycleId])
 
   function handleCreateNewCycle(data: NewCycleFormData) {
     const id = String(new Date().getTime())
@@ -98,10 +119,27 @@ export function Home() {
     reset()
   }
 
+  function handleInterruptCycle() {
+    setActiveCycleId(null)
+    setCycles(state =>
+      state.map(cycle => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, interruptedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }),
+    )
+  }
+
   // Atualiza o título da página com o tempo restante do ciclo ativo
   useEffect(() => {
     if (!activeCycle) return
     document.title = `${minutes}:${seconds}`
+
+    return () => {
+      document.title = 'Pomodoro'
+    }
   }, [minutes, seconds, activeCycle])
 
   return (
@@ -113,6 +151,7 @@ export function Home() {
             id="task"
             list="task-suggestion"
             placeholder="Informe a atividade"
+            disabled={!!activeCycle}
             {...register('task')}
           />
 
@@ -128,6 +167,7 @@ export function Home() {
             type="number"
             id="minutesAmout"
             placeholder="00"
+            disabled={!!activeCycle}
             min={1}
             max={60}
             step={1}
@@ -144,9 +184,15 @@ export function Home() {
           <span>{seconds[1]}</span>
         </CountdownContainer>
 
-        <StartButton disabled={isSubmitDisabled} type="submit">
-          <Play size={24} /> Começar
-        </StartButton>
+        {activeCycle ? (
+          <StopButton onClick={handleInterruptCycle} type="button">
+            <HandPalm size={24} /> Interromper
+          </StopButton>
+        ) : (
+          <StartButton disabled={isSubmitDisabled} type="submit">
+            <Play size={24} /> Começar
+          </StartButton>
+        )}
       </form>
     </HomeContainer>
   )
