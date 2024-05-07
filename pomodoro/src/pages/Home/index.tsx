@@ -2,6 +2,7 @@ import { Play } from 'phosphor-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as zod from 'zod'
+import { differenceInSeconds } from 'date-fns'
 import {
   CountdownContainer,
   FormContainer,
@@ -11,7 +12,7 @@ import {
   StartButton,
   TaskInput,
 } from './style'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // Schema de validação para o formulário de novo ciclo
 const newCycleFormValidation = zod.object({
@@ -26,6 +27,7 @@ interface Cycle {
   id: string
   task: string
   minutesAmount: number
+  startDate: Date
 }
 
 export function Home() {
@@ -47,8 +49,6 @@ export function Home() {
   // Calcula a quantidade total de segundos do ciclo ativo
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
 
-  console.log(totalSeconds)
-
   // Calcula a quantidade de segundos restantes
   const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0
 
@@ -67,6 +67,21 @@ export function Home() {
   const task = watch('task')
   const isSubmitDisabled = !task
 
+  // Atualiza o ciclo ativo a cada segundo atuando como um cronomêtro
+  useEffect(() => {
+    let interval: number
+    if (activeCycle) {
+      interval = setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate),
+        )
+      }, 1000)
+    }
+    return () => {
+      clearInterval(interval)
+    }
+  }, [activeCycle])
+
   function handleCreateNewCycle(data: NewCycleFormData) {
     const id = String(new Date().getTime())
 
@@ -74,12 +89,20 @@ export function Home() {
       id,
       task: data.task,
       minutesAmount: data.minutesAmount,
+      startDate: new Date(),
     }
 
     setCycles(cyclesState => [...cyclesState, newCycle])
     setActiveCycleId(id)
+    setAmountSecondsPassed(0)
     reset()
   }
+
+  // Atualiza o título da página com o tempo restante do ciclo ativo
+  useEffect(() => {
+    if (!activeCycle) return
+    document.title = `${minutes}:${seconds}`
+  }, [minutes, seconds, activeCycle])
 
   return (
     <HomeContainer>
